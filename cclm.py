@@ -6,6 +6,8 @@ from tqdm import tqdm
 import shelve
 from nltk.tokenize import word_tokenize
 
+import matplotlib.pyplot as plt
+
 class TrieNode:
     def __init__(self, char):
         self.char = char
@@ -336,7 +338,7 @@ class DataLoader:
             batch = self.sentences[i:i+self.batch_size]
             yield batch
 
-def train_test_dev_split(corpus_file, train_size=1000000, test_ratio=0.1, dev_ratio=0.1):
+def train_test_dev_split(corpus_file, train_size=55000, test_ratio=0.1, dev_ratio=0.1):
     with open(corpus_file, 'r') as file:
         sentences = file.readlines()
     random.shuffle(sentences)
@@ -399,44 +401,38 @@ def train_ccwg(train_sentences, window_size=5, freq_threshold=2, learning_rate=0
     
     optimize_transition_probabilities(ccwg, learning_rate=learning_rate, num_epochs=num_epochs)
     
+    ### Uncomment this line to save model files to repo root directory
     # ccwg.save_to_file('ccwg_model')
     
     return ccwg
 
 if __name__ == '__main__':
-    corpus_file = 'wikisent.txt'
-    model_file = 'ccwg_model.db'
+    
+    contexts = [4, 8, 16, 32, 64, 128, 256]
+    perplexities = []
+    
+    for context in contexts:
+        corpus_file = 'dracula.txt'
+        model_file = 'ccwg_model_dracula.db'
 
-    train_sentences, test_sentences, dev_sentences = train_test_dev_split(corpus_file)
+        train_sentences, test_sentences, dev_sentences = train_test_dev_split(corpus_file)
 
-    # Train the CCWG model
-    ccwg = train_ccwg(train_sentences, window_size=10, freq_threshold=2, learning_rate=0.001, num_epochs=50)
-
-    # Calculate perplexity on the test set
-    #perplexity = calculate_perplexity('ccwg_model.db', test_sentences)
-    #print(f"Test Perplexity: {perplexity:.2f}")
-
-        # Generate text using the trained model
-    print(ccwg.generate_text(max_words=50, seed='the'))
-    print(ccwg.generate_text(max_words=50, seed='artificial'))
-
-
-'''
-if __name__ == '__main__':
-    corpus_file = 'wikipedia-100k.txt'
-    model_file = 'ccwg_model.db'
-
-    if not isfile(model_file):
         # Train the CCWG model
-        ccwg = train_ccwg(corpus_file, freq_threshold=2)
-    ccwg = CCWG.load_from_file(model_file.replace('.db', ''))
+        ccwg = train_ccwg(train_sentences, window_size=context, freq_threshold=2, learning_rate=0.001, num_epochs=10)
 
-    # Generate text using the trained model
-    print(ccwg.generate_text(max_words=50, seed='the'))
-    print(ccwg.generate_text(max_words=50, seed='artificial'))
+        # Calculate perplexity on the test set
+        perplexity = calculate_perplexity(model_file, test_sentences)
+        print(f"Test Perplexity: {perplexity:.2f}")
 
-        # Generate text using the trained model
-    generate_text_from_ccwg(model_file.replace('.db', ''), max_words=50, seed='the')
-    generate_text_from_ccwg(model_file.replace('.db', ''), max_words=50, seed='artificial')
-
-'''
+            # Generate text using the trained model
+        print(ccwg.generate_text(max_words=10, seed='the'))
+        print(ccwg.generate_text(max_words=10, seed='another'))
+        
+        # DF appends
+        perplexities.append(perplexity)
+        
+    plt.plot(contexts, perplexities)
+    plt.xlabel("context window size")
+    plt.ylabel("perplexity")
+    plt.title("CCWG on Dracula")
+    plt.show()

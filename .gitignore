@@ -1,2 +1,5 @@
-wikisent.txt
-ccwg_model.db
+.DS_Store
+.venv
+*.db
+cclm_dev.py
+cclm_distill.py
